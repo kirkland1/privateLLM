@@ -88,19 +88,48 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['txt', 'pdf', 'doc', 'docx'],
+        allowedExtensions: ['txt', 'pdf', 'docx'],
       );
 
       if (result != null) {
-        // TODO: Implement file upload
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('File upload not implemented yet')),
+        setState(() {
+          _isLoading = true;
+        });
+
+        // Create multipart request
+        var request = http.MultipartRequest(
+          'POST',
+          Uri.parse('http://localhost:8000/upload'),
         );
+
+        // Add file to request
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'file',
+            result.files.single.path!,
+          ),
+        );
+
+        // Send request
+        var response = await request.send();
+        var responseData = await response.stream.bytesToString();
+
+        if (response.statusCode == 200) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Successfully uploaded and processed file')),
+          );
+        } else {
+          throw Exception('Failed to upload file: $responseData');
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error uploading file: $e')),
       );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
